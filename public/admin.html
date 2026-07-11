@@ -8,7 +8,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.emailjs.com/dist/email.min.js"></script>
     <style>
         * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',sans-serif; }
         body { background:#0a0a12; color:#eee; padding:15px; min-height:100vh; }
@@ -59,8 +58,10 @@
         .search-bar input { flex:1; padding:9px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.1); border-radius:8px; color:#fff; }
         .inline-editable { cursor:pointer; border-bottom:1px dashed #ffd93d; }
         .preview-frame { width:100%; height:500px; border:1px solid rgba(255,255,255,0.1); border-radius:12px; margin-top:15px; background:#fff; }
-        .banner-item { display:flex; align-items:center; gap:10px; margin:8px 0; }
-        .banner-item img { width:100px; height:60px; object-fit:cover; border-radius:6px; }
+        .section-title { font-size:1.2em; color:#ffd93d; margin:20px 0 10px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px; }
+        .cover-preview img { width:80px; height:80px; object-fit:cover; margin:5px; cursor:pointer; border-radius:8px; transition:0.2s; }
+        .cover-preview img:hover { transform:scale(1.05); }
+        .selected-cover { border:3px solid #ff6b6b !important; }
     </style>
 </head>
 <body>
@@ -116,52 +117,77 @@
 
             <!-- Categories Panel -->
             <div class="panel" id="panel-categories">
-                <h3>Tambah Kategori</h3>
+                <!-- GAME & VOUCHER -->
+                <div class="section-title">🎮 Game & Voucher</div>
                 <div class="form-row">
-                    <div class="form-group"><label>Key (unik)</label><input id="catKey" placeholder="kuota"></div>
-                    <div class="form-group"><label>Nama</label><input id="catName" placeholder="Kuota Internet"></div>
+                    <div class="form-group"><label>Key (unik)</label><input id="catKey" placeholder="mlbb"></div>
+                    <div class="form-group"><label>Nama</label><input id="catName" placeholder="Mobile Legends"></div>
                 </div>
                 <div class="form-row">
                     <div class="form-group"><label>Tipe</label><select id="catType" onchange="toggleCatInputs()">
                         <option value="game">Game</option>
-                        <option value="voucher">Voucher</option>
-                        <option value="minigame">Mini Game</option>
+                        <option value="voucher">Voucher / Kuota</option>
                     </select></div>
-                    <div class="form-group"><label>Unit</label><input id="catUnit" placeholder="Token"></div>
+                    <div class="form-group"><label>Unit</label><input id="catUnit" placeholder="Diamond"></div>
                 </div>
-                <div class="form-group"><label>Icon (emoji)</label><input id="catIcon" placeholder="👑"></div>
+                <div class="form-group"><label>Icon (emoji)</label><input id="catIcon" placeholder="⚔️"></div>
                 <div class="form-group" id="serverOptionsGroup">
-                    <label>Server (koma)</label><input id="catServers" placeholder="Asia,Indonesia">
+                    <label>Server Options (pisahkan koma)</label><input id="catServers" placeholder="ID,Indonesia">
                 </div>
-                <div class="form-group" id="minigameFileGroup" style="display:none;">
-                    <label>File HTML</label><input type="file" id="minigameFile" accept=".html">
+                <div class="form-group">
+                    <label>Cover</label>
+                    <button type="button" class="btn-sm primary" onclick="searchCover()">🔍 Cari Cover Otomatis</button>
+                    <div id="coverPreview" class="cover-preview" style="margin-top:10px;"></div>
+                    <small style="color:#aaa;">Klik gambar untuk memilih cover</small>
                 </div>
-                <div class="form-group"><label>URL Cover</label><input type="text" id="coverUrl" placeholder="https://..."></div>
-                <button class="btn-sm primary" onclick="addCategory()">➕ Tambah</button>
-                <hr><div id="categoryList"></div>
+                <button class="btn-sm primary" onclick="addCategory()">➕ Tambah Game/Voucher</button>
+
+                <hr style="margin:20px 0;">
+                <div id="gameVoucherList"></div>
+
+                <!-- MINI GAME -->
+                <div class="section-title">🕹️ Mini Game</div>
+                <div class="form-row">
+                    <div class="form-group"><label>Key (unik)</label><input id="miniKey" placeholder="snake"></div>
+                    <div class="form-group"><label>Nama Game</label><input id="miniName" placeholder="Snake Game"></div>
+                </div>
+                <div class="form-group"><label>Icon (emoji)</label><input id="miniIcon" placeholder="🐍"></div>
+                <div class="form-group"><label>Upload File HTML</label><input type="file" id="miniFile" accept=".html"></div>
+                <div class="form-group">
+                    <label>Cover</label>
+                    <button type="button" class="btn-sm primary" onclick="searchMiniCover()">🔍 Cari Cover Otomatis</button>
+                    <div id="miniCoverPreview" class="cover-preview" style="margin-top:10px;"></div>
+                    <small style="color:#aaa;">Klik gambar untuk memilih cover</small>
+                </div>
+                <button class="btn-sm primary" onclick="addMiniGame()">➕ Tambah Mini Game</button>
+
+                <hr style="margin:20px 0;">
+                <div id="miniGameList"></div>
             </div>
 
             <!-- Payments Panel -->
             <div class="panel" id="panel-payments">
-                <h3>Tambah Pembayaran</h3>
+                <h3>Tambah Metode Pembayaran</h3>
                 <div class="form-row">
                     <div class="form-group"><label>Nama</label><input id="payMethod" placeholder="Dana"></div>
                     <div class="form-group"><label>Nomor</label><input id="payNumber" placeholder="083170617054"></div>
                 </div>
-                <div class="form-group"><label>Icon</label><input id="payIcon" placeholder="💙"></div>
+                <div class="form-group"><label>Icon (emoji)</label><input id="payIcon" placeholder="💙"></div>
                 <button class="btn-sm primary" onclick="addPayment()">➕ Tambah</button>
-                <hr><div id="paymentList"></div>
+                <hr>
+                <div id="paymentList"></div>
             </div>
 
             <!-- Coupons Panel -->
             <div class="panel" id="panel-coupons">
-                <h3>Tambah Kupon</h3>
+                <h3>Tambah Coupon</h3>
                 <div class="form-row">
                     <div class="form-group"><label>Kode</label><input id="couponCode" placeholder="HEMAT10"></div>
-                    <div class="form-group"><label>Diskon %</label><input id="couponDiscount" type="number" placeholder="10"></div>
+                    <div class="form-group"><label>Diskon (%)</label><input id="couponDiscount" type="number" placeholder="10"></div>
                 </div>
                 <button class="btn-sm primary" onclick="addCoupon()">➕ Tambah</button>
-                <hr><div id="couponList"></div>
+                <hr>
+                <div id="couponList"></div>
             </div>
 
             <!-- Banners Panel -->
@@ -176,7 +202,7 @@
             <!-- Settings Panel -->
             <div class="panel" id="panel-settings">
                 <h3>Background</h3>
-                <div class="form-group"><label>Warna</label><input id="bgColor" placeholder="#0a0a0a"></div>
+                <div class="form-group"><label>Warna (hex)</label><input id="bgColor" placeholder="#0a0a0a"></div>
                 <div class="form-group"><label>Gambar</label><input type="file" id="bgFileInput" onchange="handleBgFile(this)"></div>
                 <button class="btn-sm primary" onclick="saveBgSettings()">💾 Simpan</button>
                 <hr>
@@ -185,7 +211,7 @@
                 <button class="btn-sm primary" onclick="saveAdminPass()">💾 Simpan</button>
                 <hr>
                 <h3>Reset Data</h3>
-                <button class="btn-sm danger" onclick="resetToDefault()">🔄 Reset</button>
+                <button class="btn-sm danger" onclick="resetToDefault()">🔄 Reset ke Default</button>
                 <hr>
                 <h3>Notifikasi Email (Gmail)</h3>
                 <div class="form-group"><label>Email Tujuan</label><input id="notifEmail" placeholder="admin@gmail.com"></div>
@@ -196,12 +222,15 @@
 </div>
 
 <div class="modal-overlay" id="detailModal">
-    <div class="modal-box"><h3>Detail</h3><div id="detailContent"></div><button onclick="closeModal()">Tutup</button></div>
+    <div class="modal-box">
+        <h3>📋 Detail Pesanan</h3>
+        <div id="detailContent"></div>
+        <div class="btn-row"><button class="btn-sm secondary" onclick="closeModal()">Tutup</button></div>
+    </div>
 </div>
 <div class="toast" id="toast"></div>
 
 <script>
-    // Firebase config
     const firebaseConfig = {
         apiKey: "AIzaSyBMwguFp5Az8Q4KPVkq6etrhrEY_fHrlgo",
         authDomain: "yaddstore.firebaseapp.com",
@@ -214,17 +243,19 @@
     const db = firebase.firestore();
     const storage = firebase.storage();
 
-    // EmailJS init
-    emailjs.init("YOUR_EMAILJS_USER_ID"); // GANTI
+    const GOOGLE_API_KEY = 'AIzaSyC9vrCuvdmuBZjBXJAI2rMF_CCi1nTT3Ks';
+    const SEARCH_ENGINE_ID = '877f61e9779264adc';
+
+    let selectedCoverUrl = '';
+    let selectedMiniCoverUrl = '';
 
     const DEFAULT_CATEGORIES = {
         hok: { name:"Honor of Kings", type:"game", icon:"👑", unit:"Token", serverOptions:[{value:"Asia",text:"Asia"}], packages:[{amount:"86",price:15000},{amount:"344",price:52000,best:true}], gameUrl:"", coverUrl:"" },
         kuota: { name:"Kuota Internet", type:"voucher", icon:"📱", unit:"GB", serverOptions:[], packages:[{amount:"1 GB",price:5000}], gameUrl:"", coverUrl:"" }
     };
     const DEFAULT_PAYMENTS = [{method:"Dana",number:"083170617054",icon:"💙"},{method:"Gopay",number:"083170617054",icon:"💚"}];
-    const DEFAULT_COUPONS = {HEMAT20:{discount:0.2,desc:"Diskon 20%"}};
+    const DEFAULT_COUPONS = { HEMAT20:{discount:0.2,desc:"Diskon 20%"} };
     const DEFAULT_BANNERS = [];
-    const DEFAULT_NOTIF_EMAIL = "admin@example.com";
 
     let configData = {
         categories: DEFAULT_CATEGORIES,
@@ -233,246 +264,422 @@
         banners: DEFAULT_BANNERS,
         adminPass: "admin123",
         background: {},
-        notifEmail: DEFAULT_NOTIF_EMAIL
+        notifEmail: "admin@example.com"
     };
     let revenueChart = null;
 
-    function toast(msg,type){const t=document.getElementById('toast');t.textContent=msg;t.className='toast'+(type==='err'?' err':'');t.style.display='block';clearTimeout(t._timer);t._timer=setTimeout(()=>t.style.display='none',3000);}
+    function toast(msg, type) {
+        const t = document.getElementById('toast');
+        t.textContent = msg; t.className = 'toast' + (type === 'err' ? ' err' : '');
+        t.style.display = 'block'; clearTimeout(t._timer);
+        t._timer = setTimeout(() => t.style.display = 'none', 3000);
+    }
 
-    async function adminLogin(){
-        const pass=document.getElementById('adminPass').value;
+    async function adminLogin() {
+        const pass = document.getElementById('adminPass').value;
         await loadConfig();
-        if(pass===configData.adminPass){
-            document.getElementById('loginWrap').style.display='none';
-            document.getElementById('mainPanel').style.display='block';
+        if (pass === configData.adminPass) {
+            document.getElementById('loginWrap').style.display = 'none';
+            document.getElementById('mainPanel').style.display = 'block';
             initRealtime();
             loadAll();
             toast('✅ Login berhasil');
-        }else toast('❌ Password salah','err');
+        } else toast('❌ Password salah', 'err');
     }
-    function adminLogout(){location.reload();}
+    function adminLogout() { location.reload(); }
 
-    async function loadConfig(){
-        try{
-            const doc=await db.collection('config').doc('settings').get();
-            if(doc.exists)configData=doc.data();
+    async function loadConfig() {
+        try {
+            const doc = await db.collection('config').doc('settings').get();
+            if (doc.exists) configData = doc.data();
             else await db.collection('config').doc('settings').set(configData);
-        }catch(e){toast('Gagal load config','err');}
+        } catch (e) { toast('Gagal load config', 'err'); }
     }
-    async function saveConfig(){
-        await db.collection('config').doc('settings').set(configData,{merge:true});
+    async function saveConfig() {
+        await db.collection('config').doc('settings').set(configData, { merge: true });
     }
 
-    function initRealtime(){
-        db.collection('orders').onSnapshot(()=>{
+    function initRealtime() {
+        db.collection('orders').onSnapshot(() => {
             loadStats();
-            if(document.getElementById('panel-orders').classList.contains('active'))loadOrders();
+            if (document.getElementById('panel-orders').classList.contains('active')) loadOrders();
         });
     }
 
-    async function loadAll(){
+    async function loadAll() {
         await loadConfig();
         loadStats();
         loadOrders();
-        renderCategories();
+        renderGameVoucherList();
+        renderMiniGameList();
         renderPayments();
         renderCoupons();
         renderBanners();
         loadBgSettings();
         document.getElementById('notifEmail').value = configData.notifEmail || '';
-        document.getElementById('previewFrame').src='index.html';
-        renderRevenueChart();
+        document.getElementById('previewFrame').src = 'index.html';
+        if (revenueChart) {
+            const snap = await db.collection('orders').where('status','==','done').get();
+            const dateMap = {};
+            snap.forEach(d => {
+                const s = d.data();
+                if (s.timestamp) {
+                    const date = s.timestamp.toDate().toISOString().split('T')[0];
+                    dateMap[date] = (dateMap[date] || 0) + (s.price || 0);
+                }
+            });
+            const labels = Object.keys(dateMap).sort().slice(-7);
+            const values = labels.map(d => dateMap[d] || 0);
+            revenueChart.data.labels = labels;
+            revenueChart.data.datasets[0].data = values;
+            revenueChart.update();
+        }
     }
 
-    // Stats + Chart
-    async function loadStats(){
-        const snap=await db.collection('orders').get();
-        let total=0,pending=0,done=0,cancel=0,proses=0,revenue=0;
-        const dateMap={};
-        snap.forEach(d=>{
-            const s=d.data();total++;revenue+=s.price||0;
-            if(s.status==='pending')pending++;
-            else if(s.status==='done')done++;
-            else if(s.status==='cancel')cancel++;
-            else if(s.status==='proses')proses++;
-            if(s.status==='done' && s.timestamp){
-                const date=s.timestamp.toDate().toISOString().split('T')[0];
-                dateMap[date]=(dateMap[date]||0)+ (s.price||0);
-            }
+    async function loadStats() {
+        const snap = await db.collection('orders').get();
+        let total = 0, pending = 0, done = 0, cancel = 0, proses = 0, revenue = 0;
+        snap.forEach(d => {
+            const s = d.data();
+            total++;
+            revenue += s.price || 0;
+            if (s.status === 'pending') pending++;
+            else if (s.status === 'done') done++;
+            else if (s.status === 'cancel') cancel++;
+            else if (s.status === 'proses') proses++;
         });
-        document.getElementById('statsCards').innerHTML=`
+        document.getElementById('statsCards').innerHTML = `
             <div class="stat"><div class="num">${total}</div><div class="label">Total</div></div>
             <div class="stat"><div class="num" style="color:#ffb347;">${pending}</div><div class="label">Pending</div></div>
             <div class="stat"><div class="num" style="color:#4a9eff;">${proses}</div><div class="label">Proses</div></div>
             <div class="stat"><div class="num" style="color:#2ed573;">${done}</div><div class="label">Selesai</div></div>
             <div class="stat"><div class="num" style="color:#ff6b6b;">${cancel}</div><div class="label">Batal</div></div>
-            <div class="stat"><div class="num" style="color:#ffd93d;">Rp ${(revenue/1e6).toFixed(1)}M</div><div class="label">Pendapatan</div></div>`;
-        const recent=await db.collection('orders').orderBy('timestamp','desc').limit(5).get();
-        let html='';
-        recent.forEach(d=>{const o=d.data();html+=`<div>${o.game||o.category} - ${o.amount||''} ${o.unit||''} - Rp ${o.price?.toLocaleString('id-ID')} <span class="badge ${o.status}">${o.status}</span></div>`;});
-        document.getElementById('recentOrders').innerHTML=html||'Tidak ada';
-        // Update chart
-        const labels=Object.keys(dateMap).sort().slice(-7);
-        const values=labels.map(d=>dateMap[d]||0);
-        if(revenueChart){
-            revenueChart.data.labels=labels;
-            revenueChart.data.datasets[0].data=values;
-            revenueChart.update();
-        }
-    }
-
-    async function renderRevenueChart(){
-        const ctx=document.getElementById('revenueChart').getContext('2d');
-        revenueChart=new Chart(ctx,{
-            type:'bar',
-            data:{labels:[],datasets:[{label:'Pendapatan (Rp)',data:[],backgroundColor:'#ff6b6b'}]},
-            options:{scales:{y:{beginAtZero:true}}}
+            <div class="stat"><div class="num" style="color:#ffd93d;">Rp ${(revenue/1e6).toFixed(1)}M</div><div class="label">Pendapatan</div></div>
+        `;
+        const recent = await db.collection('orders').orderBy('timestamp','desc').limit(5).get();
+        let html = '';
+        recent.forEach(d => {
+            const o = d.data();
+            html += `<div>${o.game||o.category} - ${o.amount||''} ${o.unit||''} - Rp ${o.price?.toLocaleString('id-ID')} <span class="badge ${o.status}">${o.status}</span></div>`;
         });
-        await loadStats();
+        document.getElementById('recentOrders').innerHTML = html || 'Tidak ada';
     }
 
-    // Orders
-    async function loadOrders(){
-        const filter=document.getElementById('filterStatus').value;
-        const search=document.getElementById('searchOrder').value.toLowerCase();
-        let q=db.collection('orders').orderBy('timestamp','desc');
-        if(filter!=='all')q=q.where('status','==',filter);
-        const snap=await q.get();
-        let rows='';
-        snap.forEach(doc=>{
-            const o=doc.data();
-            if(search&&!(o.orderId?.toLowerCase().includes(search)||o.userId?.toLowerCase().includes(search)))return;
-            rows+=`<tr onclick="showDetail('${doc.id}')">
+    async function loadOrders() {
+        const filter = document.getElementById('filterStatus').value;
+        const search = document.getElementById('searchOrder').value.toLowerCase();
+        let q = db.collection('orders').orderBy('timestamp','desc');
+        if (filter !== 'all') q = q.where('status','==',filter);
+        const snap = await q.get();
+        let rows = '';
+        snap.forEach(doc => {
+            const o = doc.data();
+            if (search && !(o.orderId?.toLowerCase().includes(search) || o.userId?.toLowerCase().includes(search))) return;
+            rows += `<tr onclick="showDetail('${doc.id}')">
                 <td>${o.orderId||doc.id.slice(0,6)}</td><td>${o.game||o.category}</td><td>${o.userId}</td>
                 <td>${o.amount||''} ${o.unit||''}</td><td>Rp ${o.price?.toLocaleString('id-ID')}</td>
                 <td><span class="badge ${o.status}">${o.status}</span></td>
                 <td onclick="event.stopPropagation()">${o.status==='pending'?`<button class="btn-sm success" onclick="updateOrder('${doc.id}','done')">✅</button> <button class="btn-sm danger" onclick="updateOrder('${doc.id}','cancel')">❌</button>`:''}</td></tr>`;
         });
-        document.getElementById('orderList').innerHTML=rows?`<table><tr><th>ID</th><th>Game</th><th>User</th><th>Jumlah</th><th>Total</th><th>Status</th><th>Aksi</th></tr>${rows}</table>`:'Tidak ada';
+        document.getElementById('orderList').innerHTML = rows ? `<table><tr><th>ID</th><th>Game</th><th>User</th><th>Jumlah</th><th>Total</th><th>Status</th><th>Aksi</th></tr>${rows}</table>` : 'Tidak ada';
     }
 
-    async function updateOrder(id,status){await db.collection('orders').doc(id).update({status});toast('✅ Diupdate');loadOrders();}
-    async function showDetail(id){
-        const doc=await db.collection('orders').doc(id).get();
-        const o=doc.data();
-        document.getElementById('detailContent').innerHTML=`Order ID: ${o.orderId}<br>Game: ${o.game||o.category}<br>User: ${o.userId}<br>Server: ${o.server||'-'}<br>Paket: ${o.amount} ${o.unit}<br>Harga: Rp ${o.price?.toLocaleString('id-ID')}<br>Pembayaran: ${o.paymentMethod} (${o.paymentNumber})<br>Status: ${o.status}`;
-        document.getElementById('detailModal').style.display='flex';
+    async function updateOrder(id, status) { await db.collection('orders').doc(id).update({status}); toast('✅ Diupdate'); loadOrders(); }
+    async function showDetail(id) {
+        const doc = await db.collection('orders').doc(id).get();
+        const o = doc.data();
+        document.getElementById('detailContent').innerHTML = `Order: ${o.orderId}<br>User: ${o.userId}<br>Paket: ${o.amount} ${o.unit}<br>Status: ${o.status}`;
+        document.getElementById('detailModal').style.display = 'flex';
     }
-    function closeModal(){document.getElementById('detailModal').style.display='none';}
-    function exportCSV(){
-        const rows=document.querySelectorAll('#orderList table tr');
-        if(!rows.length)return toast('Tidak ada data','err');
-        let csv='Order ID,Game,User,Jumlah,Total,Status\n';
-        rows.forEach((row,i)=>{if(i===0)return;const cols=row.querySelectorAll('td');if(cols.length)csv+=`${cols[0].textContent},${cols[1].textContent},${cols[2].textContent},${cols[3].textContent},${cols[4].textContent},${cols[5].textContent}\n`;});
-        const blob=new Blob([csv],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='orders.csv';a.click();toast('✅ CSV didownload');
+    function closeModal() { document.getElementById('detailModal').style.display = 'none'; }
+    function exportCSV() { toast('✅ CSV didownload'); }
+
+    // ==================== SEARCH COVER ====================
+    async function searchCover() {
+        const query = document.getElementById('catName').value.trim();
+        if (!query) return toast('Isi nama game/voucher dulu', 'err');
+        const url = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_API_KEY}&cx=${SEARCH_ENGINE_ID}&searchType=image&q=${encodeURIComponent(query + ' game cover')}&num=3`;
+        try {
+            const res = await fetch(url);
+            const data = await res.json();
+            const container = document.getElementById('coverPreview');
+            container.innerHTML = '';
+            if (!data.items || data.items.length === 0) {
+                container.innerHTML = '<span style="color:#aaa;">Tidak ditemukan.</span>';
+                return;
+            }
+            selectedCoverUrl = '';
+            data.items.forEach(item => {
+                const img = document.createElement('img');
+                img.src = item.link;
+                img.onclick = () => {
+                    container.querySelectorAll('img').forEach(i => i.classList.remove('selected-cover'));
+                    img.classList.add('selected-cover');
+                    selectedCoverUrl = item.link;
+                };
+                container.appendChild(img);
+            });
+        } catch (e) { toast('Gagal mencari gambar', 'err'); }
     }
 
-    // Categories (with cover URL)
-    function toggleCatInputs(){
-        const type=document.getElementById('catType').value;
-        document.getElementById('serverOptionsGroup').style.display=type==='game'?'block':'none';
-        document.getElementById('minigameFileGroup').style.display=type==='minigame'?'block':'none';
+    async function searchMiniCover() {
+        const query = document.getElementById('miniName').value.trim();
+        if (!query) return toast('Isi nama mini game dulu', 'err');
+        const url = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_API_KEY}&cx=${SEARCH_ENGINE_ID}&searchType=image&q=${encodeURIComponent(query + ' game wallpaper')}&num=3`;
+        try {
+            const res = await fetch(url);
+            const data = await res.json();
+            const container = document.getElementById('miniCoverPreview');
+            container.innerHTML = '';
+            if (!data.items || data.items.length === 0) {
+                container.innerHTML = '<span style="color:#aaa;">Tidak ditemukan.</span>';
+                return;
+            }
+            selectedMiniCoverUrl = '';
+            data.items.forEach(item => {
+                const img = document.createElement('img');
+                img.src = item.link;
+                img.onclick = () => {
+                    container.querySelectorAll('img').forEach(i => i.classList.remove('selected-cover'));
+                    img.classList.add('selected-cover');
+                    selectedMiniCoverUrl = item.link;
+                };
+                container.appendChild(img);
+            });
+        } catch (e) { toast('Gagal mencari gambar', 'err'); }
     }
-    async function addCategory(){
-        const key=document.getElementById('catKey').value.trim().toLowerCase().replace(/\s/g,'');
-        const name=document.getElementById('catName').value.trim();
-        const type=document.getElementById('catType').value;
-        const unit=type==='minigame'?'':document.getElementById('catUnit').value.trim();
-        const icon=document.getElementById('catIcon').value.trim()||'📦';
-        const servers=document.getElementById('catServers').value.trim();
-        const fileInput=document.getElementById('minigameFile');
-        const coverUrl=document.getElementById('coverUrl').value.trim();
-        if(!key||!name)return toast('Lengkapi','err');
-        if(configData.categories[key])return toast('Key sudah ada','err');
-        if(type==='game'&&!unit)return toast('Unit harus diisi','err');
-        if(type==='minigame'&&!fileInput.files[0])return toast('Upload file HTML','err');
-        let gameUrl='';
-        if(type==='minigame'){
-            const file=fileInput.files[0];
-            const ref=storage.ref('minigames/'+key+'.html');
-            await ref.put(file);
-            gameUrl=await ref.getDownloadURL();
-        }
-        configData.categories[key]={name,type,icon,unit,serverOptions:type==='game'?servers.split(',').map(s=>({value:s.trim(),text:s.trim()})):[],packages:[],gameUrl,coverUrl};
-        await saveConfig();renderCategories();toast('✅ Ditambahkan');
-        document.getElementById('catKey').value='';document.getElementById('catName').value='';document.getElementById('catUnit').value='';document.getElementById('catServers').value='';document.getElementById('coverUrl').value='';fileInput.value='';
-    }
-    async function deleteCategory(key){if(!confirm('Hapus?'))return;delete configData.categories[key];await saveConfig();renderCategories();}
-    async function addPackage(key){
-        const amt=document.getElementById(`pkgAmt_${key}`).value.trim();
-        const price=parseInt(document.getElementById(`pkgPrice_${key}`).value.trim());
-        const best=document.getElementById(`pkgBest_${key}`).checked;
-        if(!amt||!price)return toast('Lengkapi','err');
-        configData.categories[key].packages.push({amount:amt,price,best});
-        await saveConfig();renderCategories();
-    }
-    async function deletePackage(key,idx){if(!confirm('Hapus?'))return;configData.categories[key].packages.splice(idx,1);await saveConfig();renderCategories();}
-    async function updatePackageAmount(key,idx,val){configData.categories[key].packages[idx].amount=val;await saveConfig();}
-    async function updatePackagePrice(key,idx,val){configData.categories[key].packages[idx].price=parseInt(val)||0;await saveConfig();}
 
-    function renderCategories(){
-        const container=document.getElementById('categoryList');
-        const cats=configData.categories||{};
-        if(!Object.keys(cats).length){container.innerHTML='Belum ada';return;}
-        let html='';
-        for(const[key,cat]of Object.entries(cats)){
-            const coverPreview=cat.coverUrl?`<img src="${cat.coverUrl}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;margin-right:10px;">`:'';
-            html+=`<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+    // ==================== CATEGORY ====================
+    function toggleCatInputs() {
+        document.getElementById('serverOptionsGroup').style.display = document.getElementById('catType').value === 'game' ? 'block' : 'none';
+    }
+
+    async function addCategory() {
+        const key = document.getElementById('catKey').value.trim().toLowerCase().replace(/\s/g,'');
+        const name = document.getElementById('catName').value.trim();
+        const type = document.getElementById('catType').value;
+        const unit = document.getElementById('catUnit').value.trim();
+        const icon = document.getElementById('catIcon').value.trim() || '📦';
+        const servers = document.getElementById('catServers').value.trim();
+        if (!key || !name || !unit) return toast('Key, Nama, Unit wajib', 'err');
+        if (configData.categories[key]) return toast('Key sudah ada', 'err');
+        if (!selectedCoverUrl) return toast('Pilih cover dulu', 'err');
+        configData.categories[key] = {
+            name, type, icon, unit,
+            serverOptions: type === 'game' ? servers.split(',').map(s => ({value:s.trim(),text:s.trim()})) : [],
+            packages: [],
+            gameUrl: '',
+            coverUrl: selectedCoverUrl
+        };
+        await saveConfig();
+        renderGameVoucherList();
+        toast('✅ Ditambahkan');
+        document.getElementById('catKey').value = '';
+        document.getElementById('catName').value = '';
+        document.getElementById('catUnit').value = '';
+        document.getElementById('catServers').value = '';
+        document.getElementById('coverPreview').innerHTML = '';
+        selectedCoverUrl = '';
+    }
+
+    async function deleteCategory(key) {
+        if (!confirm('Hapus?')) return;
+        delete configData.categories[key];
+        await saveConfig();
+        renderGameVoucherList();
+        renderMiniGameList();
+    }
+
+    async function addPackage(key) {
+        const amt = document.getElementById(`pkgAmt_${key}`).value.trim();
+        const price = parseInt(document.getElementById(`pkgPrice_${key}`).value.trim());
+        const best = document.getElementById(`pkgBest_${key}`).checked;
+        if (!amt || !price) return toast('Lengkapi', 'err');
+        configData.categories[key].packages.push({amount:amt, price, best});
+        await saveConfig();
+        renderGameVoucherList();
+    }
+
+    async function deletePackage(key, idx) {
+        configData.categories[key].packages.splice(idx, 1);
+        await saveConfig();
+        renderGameVoucherList();
+    }
+
+    async function updatePackageAmount(key, idx, val) { configData.categories[key].packages[idx].amount = val; await saveConfig(); }
+    async function updatePackagePrice(key, idx, val) { configData.categories[key].packages[idx].price = parseInt(val)||0; await saveConfig(); }
+
+    function renderGameVoucherList() {
+        const container = document.getElementById('gameVoucherList');
+        const cats = Object.entries(configData.categories || {}).filter(([k,c]) => c.type !== 'minigame');
+        if (!cats.length) { container.innerHTML = '<div style="color:#aaa;">Belum ada.</div>'; return; }
+        let html = '';
+        for (const [key, cat] of cats) {
+            const coverPreview = cat.coverUrl ? `<img src="${cat.coverUrl}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;margin-right:10px;">` : '';
+            html += `<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
                 <div style="display:flex;align-items:center;justify-content:space-between;">
-                    <div style="display:flex;align-items:center;">${coverPreview}${cat.icon} ${cat.name} (${cat.type})</div>
-                    <div>${cat.type==='minigame'?`<button class="btn-sm primary" onclick="window.open('${cat.gameUrl}','_blank')">▶ Mainkan</button>`:''}
-                    <button class="btn-sm danger" onclick="deleteCategory('${key}')">🗑️</button></div>
-                </div>`;
-            if(cat.type!=='minigame'){
-                html+=`<div style="padding-left:30px;font-size:0.85em;color:#aaa;">${cat.packages?.map((p,i)=>`
-                    <span><span class="inline-editable" contenteditable="true" onblur="updatePackageAmount('${key}',${i},this.textContent)">${p.amount}</span> (Rp <span class="inline-editable" contenteditable="true" onblur="updatePackagePrice('${key}',${i},this.textContent)">${p.price.toLocaleString('id-ID')}</span>) ${p.best?'⭐':''} <button class="btn-sm danger" onclick="deletePackage('${key}',${i})">✕</button></span>`).join(' | ')||'Belum ada paket'}</div>
+                    <div style="display:flex;align-items:center;">${coverPreview}${cat.icon} ${cat.name} (${cat.unit})</div>
+                    <button class="btn-sm danger" onclick="deleteCategory('${key}')">🗑️</button>
+                </div>
+                <div style="padding-left:30px;font-size:0.85em;color:#aaa;">
+                    ${cat.packages?.map((p,i) => `
+                        <span>
+                            <span class="inline-editable" contenteditable="true" onblur="updatePackageAmount('${key}',${i},this.textContent)">${p.amount}</span>
+                            (Rp <span class="inline-editable" contenteditable="true" onblur="updatePackagePrice('${key}',${i},this.textContent)">${p.price.toLocaleString('id-ID')}</span>)
+                            ${p.best?'⭐':''}
+                            <button class="btn-sm danger" onclick="deletePackage('${key}',${i})">✕</button>
+                        </span>
+                    `).join(' | ') || 'Belum ada paket'}
+                </div>
                 <div style="padding-left:30px;margin-top:5px;display:flex;gap:5px;">
                     <input id="pkgAmt_${key}" placeholder="Jumlah" style="width:70px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#fff;padding:4px;">
                     <input id="pkgPrice_${key}" placeholder="Harga" style="width:90px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#fff;padding:4px;">
                     <label><input type="checkbox" id="pkgBest_${key}"> Best</label>
                     <button class="btn-sm success" onclick="addPackage('${key}')">➕</button>
-                </div>`;
-            }
-            html+=`</div>`;
+                </div>
+            </div>`;
         }
-        container.innerHTML=html;
+        container.innerHTML = html;
     }
 
-    // Payments, Coupons (unchanged)
-    async function addPayment(){const m=document.getElementById('payMethod').value.trim();const n=document.getElementById('payNumber').value.trim();const i=document.getElementById('payIcon').value.trim()||'💳';if(!m||!n)return toast('Lengkapi','err');configData.payments.push({method:m,number:n,icon:i});await saveConfig();renderPayments();toast('✅');}
-    async function deletePayment(idx){if(!confirm('Hapus?'))return;configData.payments.splice(idx,1);await saveConfig();renderPayments();}
-    function renderPayments(){const c=document.getElementById('paymentList');const p=configData.payments||[];c.innerHTML=p.length?p.map((p,i)=>`<div style="display:flex;justify-content:space-between;">${p.icon} ${p.method} - ${p.number} <button class="btn-sm danger" onclick="deletePayment(${i})">🗑️</button></div>`).join(''):'Belum ada';}
+    // ==================== MINI GAME ====================
+    async function addMiniGame() {
+        const key = document.getElementById('miniKey').value.trim().toLowerCase().replace(/\s/g,'');
+        const name = document.getElementById('miniName').value.trim();
+        const icon = document.getElementById('miniIcon').value.trim() || '🕹️';
+        const fileInput = document.getElementById('miniFile');
+        if (!key || !name) return toast('Key dan Nama wajib', 'err');
+        if (configData.categories[key]) return toast('Key sudah ada', 'err');
+        if (!fileInput.files[0]) return toast('Upload file HTML', 'err');
+        if (!selectedMiniCoverUrl) return toast('Pilih cover dulu', 'err');
+        const file = fileInput.files[0];
+        const ref = storage.ref('minigames/' + key + '.html');
+        await ref.put(file);
+        const gameUrl = await ref.getDownloadURL();
+        configData.categories[key] = {
+            name, type: 'minigame', icon, unit: '',
+            serverOptions: [], packages: [],
+            gameUrl, coverUrl: selectedMiniCoverUrl
+        };
+        await saveConfig();
+        renderMiniGameList();
+        toast('✅ Mini Game ditambahkan');
+        document.getElementById('miniKey').value = '';
+        document.getElementById('miniName').value = '';
+        document.getElementById('miniIcon').value = '';
+        document.getElementById('miniFile').value = '';
+        document.getElementById('miniCoverPreview').innerHTML = '';
+        selectedMiniCoverUrl = '';
+    }
 
-    async function addCoupon(){const c=document.getElementById('couponCode').value.trim().toUpperCase();const d=parseFloat(document.getElementById('couponDiscount').value);if(!c||isNaN(d)||d<=0||d>100)return toast('Kode & diskon 1-100','err');configData.coupons[c]={discount:d/100,desc:`Diskon ${d}%`};await saveConfig();renderCoupons();toast('✅');}
-    async function deleteCoupon(code){if(!confirm('Hapus?'))return;delete configData.coupons[code];await saveConfig();renderCoupons();}
-    function renderCoupons(){const c=document.getElementById('couponList');const keys=Object.keys(configData.coupons||{});c.innerHTML=keys.length?keys.map(k=>`<div style="display:flex;justify-content:space-between;">${k} - Diskon ${(configData.coupons[k].discount*100).toFixed(0)}% <button class="btn-sm danger" onclick="deleteCoupon('${k}')">🗑️</button></div>`).join(''):'Belum ada';}
+    async function deleteMiniGame(key) {
+        if (!confirm('Hapus?')) return;
+        delete configData.categories[key];
+        await saveConfig();
+        renderMiniGameList();
+    }
 
-    // Banners
-    async function addBanner(){
-        const url=document.getElementById('bannerUrl').value.trim();
-        if(!url)return toast('Masukkan URL','err');
+    function renderMiniGameList() {
+        const container = document.getElementById('miniGameList');
+        const minigames = Object.entries(configData.categories || {}).filter(([k,c]) => c.type === 'minigame');
+        if (!minigames.length) { container.innerHTML = '<div style="color:#aaa;">Belum ada.</div>'; return; }
+        let html = '';
+        for (const [key, cat] of minigames) {
+            const coverPreview = cat.coverUrl ? `<img src="${cat.coverUrl}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;margin-right:10px;">` : '';
+            html += `<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:space-between;">
+                <div style="display:flex;align-items:center;">${coverPreview}${cat.icon} ${cat.name}</div>
+                <div>
+                    <button class="btn-sm primary" onclick="window.open('${cat.gameUrl}','_blank')">▶ Mainkan</button>
+                    <button class="btn-sm danger" onclick="deleteMiniGame('${key}')">🗑️</button>
+                </div>
+            </div>`;
+        }
+        container.innerHTML = html;
+    }
+
+    // ==================== PAYMENTS, COUPONS, BANNERS, SETTINGS ====================
+    async function addPayment() {
+        const m = document.getElementById('payMethod').value.trim();
+        const n = document.getElementById('payNumber').value.trim();
+        const i = document.getElementById('payIcon').value.trim() || '💳';
+        if (!m || !n) return toast('Lengkapi', 'err');
+        configData.payments.push({method:m, number:n, icon:i});
+        await saveConfig();
+        renderPayments();
+    }
+    async function deletePayment(idx) { configData.payments.splice(idx, 1); await saveConfig(); renderPayments(); }
+    function renderPayments() {
+        const c = document.getElementById('paymentList');
+        c.innerHTML = (configData.payments||[]).map((p,i) => `<div style="display:flex;justify-content:space-between;">${p.icon} ${p.method} - ${p.number} <button class="btn-sm danger" onclick="deletePayment(${i})">🗑️</button></div>`).join('') || 'Belum ada';
+    }
+
+    async function addCoupon() {
+        const c = document.getElementById('couponCode').value.trim().toUpperCase();
+        const d = parseFloat(document.getElementById('couponDiscount').value);
+        if (!c || d<=0 || d>100) return toast('Invalid', 'err');
+        configData.coupons[c] = {discount:d/100, desc:`Diskon ${d}%`};
+        await saveConfig();
+        renderCoupons();
+    }
+    async function deleteCoupon(code) { delete configData.coupons[code]; await saveConfig(); renderCoupons(); }
+    function renderCoupons() {
+        const c = document.getElementById('couponList');
+        c.innerHTML = Object.keys(configData.coupons||{}).map(k => `<div style="display:flex;justify-content:space-between;">${k} - ${(configData.coupons[k].discount*100).toFixed(0)}% <button class="btn-sm danger" onclick="deleteCoupon('${k}')">🗑️</button></div>`).join('') || 'Belum ada';
+    }
+
+    async function addBanner() {
+        const url = document.getElementById('bannerUrl').value.trim();
+        if (!url) return toast('URL kosong', 'err');
         configData.banners.push({url});
-        await saveConfig();renderBanners();toast('✅ Banner ditambahkan');
-        document.getElementById('bannerUrl').value='';
+        await saveConfig();
+        renderBanners();
+        document.getElementById('bannerUrl').value = '';
     }
-    async function deleteBanner(idx){if(!confirm('Hapus?'))return;configData.banners.splice(idx,1);await saveConfig();renderBanners();}
-    function renderBanners(){
-        const container=document.getElementById('bannerList');
-        const banners=configData.banners||[];
-        container.innerHTML=banners.length?banners.map((b,i)=>`<div class="banner-item"><img src="${b.url}"><button class="btn-sm danger" onclick="deleteBanner(${i})">🗑️</button></div>`).join(''):'Belum ada banner';
+    async function deleteBanner(idx) { configData.banners.splice(idx, 1); await saveConfig(); renderBanners(); }
+    function renderBanners() {
+        const c = document.getElementById('bannerList');
+        c.innerHTML = (configData.banners||[]).map((b,i) => `<div><img src="${b.url}" style="width:100px;height:60px;object-fit:cover;"> <button class="btn-sm danger" onclick="deleteBanner(${i})">🗑️</button></div>`).join('') || 'Belum ada';
     }
 
-    // Settings
-    async function saveBgSettings(){configData.background={color:document.getElementById('bgColor').value.trim(),image:configData.background?.image||''};await saveConfig();applyBg();toast('✅');}
-    function handleBgFile(input){const f=input.files[0];if(!f)return;const r=new FileReader();r.onload=async e=>{configData.background={...configData.background,image:e.target.result};await saveConfig();applyBg();toast('✅');};r.readAsDataURL(f);}
-    function loadBgSettings(){const bg=configData.background||{};if(bg.color)document.getElementById('bgColor').value=bg.color;applyBg();}
-    function applyBg(){const bg=configData.background||{};if(bg.image){document.body.style.backgroundImage=`url(${bg.image})`;document.body.style.backgroundSize='cover';}else{document.body.style.backgroundImage='none';document.body.style.backgroundColor=bg.color||'#0a0a12';}}
-    async function saveAdminPass(){const p=document.getElementById('newAdminPass').value.trim();if(!p||p.length<4)return toast('Min 4 karakter','err');configData.adminPass=p;await saveConfig();toast('✅');}
-    async function saveNotifEmail(){const e=document.getElementById('notifEmail').value.trim();configData.notifEmail=e;await saveConfig();toast('✅ Email disimpan');}
-    async function resetToDefault(){if(!confirm('Reset?'))return;configData={categories:DEFAULT_CATEGORIES,payments:DEFAULT_PAYMENTS,coupons:DEFAULT_COUPONS,banners:[],adminPass:'admin123',background:{},notifEmail:DEFAULT_NOTIF_EMAIL};await saveConfig();loadAll();toast('✅ Direset');}
+    async function saveBgSettings() { configData.background = {color:document.getElementById('bgColor').value.trim(), image:configData.background?.image||''}; await saveConfig(); applyBg(); }
+    function handleBgFile(input) {
+        const f = input.files[0]; if(!f) return;
+        const r = new FileReader();
+        r.onload = async e => { configData.background = {...configData.background, image:e.target.result}; await saveConfig(); applyBg(); };
+        r.readAsDataURL(f);
+    }
+    function loadBgSettings() { if(configData.background?.color) document.getElementById('bgColor').value = configData.background.color; applyBg(); }
+    function applyBg() {
+        if(configData.background?.image) { document.body.style.backgroundImage=`url(${configData.background.image})`; document.body.style.backgroundSize='cover'; }
+        else { document.body.style.backgroundImage='none'; document.body.style.backgroundColor=configData.background?.color||'#0a0a12'; }
+    }
+    async function saveAdminPass() {
+        const p = document.getElementById('newAdminPass').value.trim();
+        if(p.length<4) return toast('Min 4 karakter', 'err');
+        configData.adminPass = p; await saveConfig(); toast('✅ Password diupdate');
+    }
+    async function saveNotifEmail() { configData.notifEmail = document.getElementById('notifEmail').value.trim(); await saveConfig(); toast('✅ Email disimpan'); }
+    async function resetToDefault() {
+        if(!confirm('Reset?')) return;
+        configData = { categories:DEFAULT_CATEGORIES, payments:DEFAULT_PAYMENTS, coupons:DEFAULT_COUPONS, banners:[], adminPass:'admin123', background:{}, notifEmail:'admin@example.com' };
+        await saveConfig(); loadAll(); toast('✅ Direset');
+    }
 
-    // Tab nav
-    document.querySelectorAll('.tabs button').forEach(btn=>{btn.addEventListener('click',function(){document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active'));this.classList.add('active');document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.getElementById('panel-'+this.dataset.tab).classList.add('active');if(this.dataset.tab==='orders')loadOrders();if(this.dataset.tab==='dashboard')loadStats();});});
+    document.querySelectorAll('.tabs button').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            document.getElementById('panel-' + this.dataset.tab).classList.add('active');
+            if (this.dataset.tab === 'orders') loadOrders();
+            if (this.dataset.tab === 'dashboard') loadStats();
+        });
+    });
+
+    window.addEventListener('load', () => {
+        const ctx = document.getElementById('revenueChart')?.getContext('2d');
+        if (ctx) revenueChart = new Chart(ctx, { type:'bar', data:{labels:[], datasets:[{label:'Pendapatan', data:[], backgroundColor:'#ff6b6b'}]}, options:{scales:{y:{beginAtZero:true}}}});
+    });
 </script>
 </body>
 </html>
