@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YaddStore - Admin Panel</title>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+    <style>
+        :root {
+            --bg: #0d1117; --card: #161b22; --border: #30363d;
+            --text: #e6edf3; --text-secondary: #8b949e;
+            --accent: #ff6b6b; --gold: #ffd93d; --green: #2ed573; --blue: #58a6ff;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',system-ui,sans-serif; }
+        body { background:var(--bg); color:var(--text); min-height:100vh; }
+        .login-screen { display:flex; justify-content:center; align-items:center; min-height:100vh; padding:20px; }
+        .login-box { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:30px; width:100%; max-width:400px; text-align:center; }
+        .login-box h2 { margin-bottom:6px; font-size:1.5em; }
+        .login-box input { width:100%; padding:12px; background:var(--bg); border:1px solid var(--border); border-radius:10px; color:var(--text); font-size:0.95em; margin-bottom:12px; outline:none; }
+        .login-box .btn { width:100%; padding:12px; background:linear-gradient(45deg,#ff6b6b,#ee5a24); border:none; border-radius:10px; color:#fff; font-weight:700; cursor:pointer; font-size:1em; }
+        .dashboard { display:none; padding:20px; max-width:1200px; margin:0 auto; }
+        .dashboard.show { display:block; }
+        .topbar { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:20px; padding-bottom:15px; border-bottom:1px solid var(--border); }
+        .topbar h1 { font-size:1.4em; background:linear-gradient(45deg,#ff6b6b,#ffd93d); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+        .topbar .btn-logout { padding:8px 16px; background:var(--card); border:1px solid var(--border); border-radius:8px; color:var(--text); cursor:pointer; font-size:0.85em; }
+        .tabs { display:flex; gap:4px; margin-bottom:20px; flex-wrap:wrap; }
+        .tab-btn { padding:10px 16px; background:var(--card); border:1px solid var(--border); border-radius:8px; color:var(--text-secondary); cursor:pointer; font-size:0.82em; font-weight:600; }
+        .tab-btn:hover,.tab-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+        .tab-content { display:none; }
+        .tab-content.active { display:block; }
+        .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-bottom:20px; }
+        .stat-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; text-align:center; }
+        .stat-card .stat-value { font-size:1.5em; font-weight:800; color:var(--gold); }
+        .stat-card .stat-label { color:var(--text-secondary); font-size:0.7em; }
+        .section-title { font-size:1em; font-weight:700; margin-bottom:10px; color:var(--gold); }
+        .table-container { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:15px; }
+        .table-header { display:grid; padding:10px 14px; background:rgba(255,255,255,0.03); font-size:0.72em; font-weight:700; color:var(--text-secondary); border-bottom:1px solid var(--border); gap:8px; }
+        .table-row { display:grid; padding:10px 14px; border-bottom:1px solid var(--border); font-size:0.78em; gap:8px; align-items:center; }
+        .table-row:last-child { border-bottom:none; }
+        .grid-orders { grid-template-columns:1fr 1fr 0.7fr 0.8fr 0.8fr 0.7fr; }
+        .grid-games { grid-template-columns:1.5fr 1.2fr 1fr 1fr 0.8fr 0.8fr; }
+        .grid-payments { grid-template-columns:1fr 1.5fr 1.5fr 1fr 0.7fr; }
+        .grid-coupons { grid-template-columns:1fr 1fr 1fr 1fr 1.2fr 0.7fr; }
+        .grid-settings { grid-template-columns:1.5fr 2fr 0.8fr; }
+        .grid-minigame { grid-template-columns:1fr 1fr 0.7fr 0.7fr; }
+        .editable-input { width:100%; padding:6px 8px; background:var(--bg); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:0.8em; outline:none; text-align:center; }
+        .btn-sm { padding:6px 12px; border:none; border-radius:6px; cursor:pointer; font-size:0.72em; font-weight:600; color:#fff; }
+        .btn-save { background:var(--green); }
+        .btn-del { background:var(--accent); }
+        .btn-add { background:var(--green); padding:10px 20px; font-size:0.85em; margin-top:10px; cursor:pointer; border:none; border-radius:8px; color:#fff; font-weight:600; }
+        .btn-refresh { background:var(--card); border:1px solid var(--border); color:var(--text); padding:6px 14px; border-radius:6px; cursor:pointer; font-size:0.75em; }
+        .toast { position:fixed; top:20px; right:20px; background:var(--green); color:#fff; padding:12px 20px; border-radius:10px; z-index:9999; font-weight:600; font-size:0.85em; display:none; }
+        .toast.err { background:#ff6b6b; }
+        input[type="file"] { color:var(--text); }
+    </style>
+</head>
+<body>
+    <div class="toast" id="toast"></div>
+
+    <div class="login-screen" id="loginScreen">
+        <div class="login-box">
+            <h2>🔐 Admin YaddStore</h2>
+            <p style="color:var(--text-secondary);font-size:0.85em;margin-bottom:20px;">Masukkan password admin</p>
+            <input type="password" id="adminPass" placeholder="Password..." onkeypress="if(event.key==='Enter')loginAdmin()">
+            <button class="btn" onclick="loginAdmin()">MASUK</button>
+            <p id="loginError" style="color:#ff6b6b;font-size:0.8em;margin-top:8px;"></p>
+        </div>
+    </div>
+
+    <div class="dashboard" id="dashboard">
+        <div class="topbar">
+            <h1>⚡ Admin Panel YaddStore</h1>
+            <button class="btn-logout" onclick="logoutAdmin()">🚪 Logout</button>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card"><div class="stat-value" id="statTotal">0</div><div class="stat-label">Total Pesanan</div></div>
+            <div class="stat-card"><div class="stat-value" id="statRevenue">Rp 0</div><div class="stat-label">Pendapatan</div></div>
+            <div class="stat-card"><div class="stat-value" id="statPending">0</div><div class="stat-label">Pending</div></div>
+            <div class="stat-card"><div class="stat-value" id="statDone">0</div><div class="stat-label">Selesai</div></div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('orders')">📋 Pesanan</button>
+            <button class="tab-btn" onclick="switchTab('games')">🎮 Game</button>
+            <button class="tab-btn" onclick="switchTab('minigame')">🕹️ Mini Game</button>
+            <button class="tab-btn" onclick="switchTab('payments')">💳 Bayar</button>
+            <button class="tab-btn" onclick="switchTab('coupons')">🏷️ Kupon</button>
+            <button class="tab-btn" onclick="switchTab('settings')">⚙️ Set</button>
+        </div>
+
+        <div class="tab-content active" id="tab-orders">
+            <div class="section-title">📋 Semua Pesanan</div>
+            <div class="table-container"><div class="table-header grid-orders"><span>Order ID</span><span>Game / User</span><span>Paket</span><span>Harga</span><span>Status</span><span>Aksi</span></div><div id="orderList"></div></div>
+            <button class="btn-refresh" onclick="loadOrders()">🔄 Refresh</button>
+        </div>
+
+        <div class="tab-content" id="tab-games">
+            <div class="section-title">🎮 Edit Game & Harga</div>
+            <div class="table-container"><div class="table-header grid-games"><span>Game</span><span>Item</span><span>Jumlah</span><span>Harga (Rp)</span><span>Bonus</span><span>Aksi</span></div><div id="gameEditList"></div></div>
+            <button class="btn-add" onclick="addGameItem()">➕ Tambah Item</button>
+            <button class="btn-add" onclick="addNewGame()" style="background:var(--blue);margin-left:8px;">🆕 Tambah Game Baru</button>
+            <button class="btn-refresh" onclick="loadGameEditor()" style="margin-left:8px;">🔄 Refresh</button>
+        </div>
+
+        <div class="tab-content" id="tab-minigame">
+            <div class="section-title">🕹️ Kelola Mini Game</div>
+            <div class="table-container">
+                <div class="table-header grid-minigame"><span>Key</span><span>Nama</span><span>Cover URL</span><span>Aksi</span></div>
+                <div id="minigameList"></div>
+            </div>
+            <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:15px;margin-top:15px;">
+                <h3 style="margin-bottom:10px;">➕ Tambah Mini Game</h3>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+                    <input type="text" id="miniKey" class="editable-input" placeholder="Key (contoh: snake)" style="text-align:left;">
+                    <input type="text" id="miniName" class="editable-input" placeholder="Nama Game" style="text-align:left;">
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+                    <input type="text" id="miniCoverUrl" class="editable-input" placeholder="Cover URL (opsional)" style="text-align:left;">
+                    <input type="file" id="miniFile" accept=".html" style="color:var(--text);">
+                </div>
+                <button class="btn-add" onclick="addMiniGame()" style="width:100%;">➕ Tambah Mini Game</button>
+            </div>
+        </div>
+
+        <div class="tab-content" id="tab-payments">
+            <div class="section-title">💳 Edit Pembayaran</div>
+            <div class="table-container"><div class="table-header grid-payments"><span>Metode</span><span>Nomor</span><span>Nama</span><span>Icon</span><span>Aksi</span></div><div id="paymentEditList"></div></div>
+            <button class="btn-add" onclick="addPaymentMethod()">➕ Tambah</button>
+        </div>
+
+        <div class="tab-content" id="tab-coupons">
+            <div class="section-title">🏷️ Edit Kupon</div>
+            <div class="table-container"><div class="table-header grid-coupons"><span>Kode</span><span>Diskon</span><span>Min</span><span>Max</span><span>Deskripsi</span><span>Aksi</span></div><div id="couponEditList"></div></div>
+            <button class="btn-add" onclick="addCoupon()">➕ Tambah</button>
+        </div>
+
+        <div class="tab-content" id="tab-settings">
+            <div class="section-title">⚙️ Pengaturan</div>
+            <div class="table-container"><div class="table-header grid-settings"><span>Setting</span><span>Nilai</span><span>Aksi</span></div>
+                <div class="table-row grid-settings"><span>Password Admin</span><span><input type="text" id="editAdminPass" class="editable-input" placeholder="Baru..."></span><button class="btn-sm btn-save" onclick="saveAdminPass()">💾</button></div>
+                <div class="table-row grid-settings"><span>No WA Admin</span><span><input type="text" id="editWa" class="editable-input" value="083170617054"></span><button class="btn-sm btn-save" onclick="saveWa()">💾</button></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBMwguFp5Az8Q4KPVkq6etrhrEY_fHrlgo",
+            authDomain: "yaddstore.firebaseapp.com",
+            projectId: "yaddstore",
+            storageBucket: "yaddstore.firebasestorage.app",
+            messagingSenderId: "1086200506513",
+            appId: "1:1086200506513:web:9ee304eb4d8fe78d88f730"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const storage = firebase.storage();
+
+        const DEFAULT_GAME_DATA = { 
+            mlbb:{name:'Mobile Legends',icon:'⚔️',serverOptions:[{value:'ID',text:'Indonesia (ID)'}],unit:'Diamond',packages:[{amount:'86',price:15000},{amount:'172',price:28000},{amount:'344',price:52000,best:true}]},
+            hok:{name:'Honor of Kings',icon:'👑',serverOptions:[{value:'Asia',text:'Asia'}],unit:'Token',packages:[{amount:'86',price:15000},{amount:'344',price:52000,best:true}]},
+            ff:{name:'Free Fire',icon:'🔥',serverOptions:[{value:'ID',text:'Indonesia (ID)'}],unit:'Diamond',packages:[{amount:'70',price:12000},{amount:'280',price:45000,best:true}]}
+        };
+        const DEFAULT_PAYMENTS = [{method:'Dana',number:'083170617054',name:'YaddStore',icon:'💙'},{method:'Gopay',number:'083170617054',name:'YaddStore',icon:'💚'},{method:'OVO',number:'083170617054',name:'YaddStore',icon:'💜'}];
+        const DEFAULT_COUPONS = {'HEMAT20':{discount:0.2,minPrice:200000,maxDiscount:40000,desc:'Diskon 20%',once:true}};
+
+        let gameData = DEFAULT_GAME_DATA;
+        let paymentMethods = DEFAULT_PAYMENTS;
+        let coupons = DEFAULT_COUPONS;
+
+        function loginAdmin(){
+            const pass = document.getElementById('adminPass').value;
+            if(pass === (localStorage.getItem('yaddstore_admin_pass') || 'admin123')){
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('dashboard').classList.add('show');
+                localStorage.setItem('admin_logged','true');
+                loadAllData();
+                toast('✅ Login berhasil!');
+            } else {
+                document.getElementById('loginError').textContent = '❌ Password salah!';
+            }
+        }
+        function logoutAdmin(){ localStorage.removeItem('admin_logged'); location.reload(); }
+
+        function switchTab(tab){
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active');
+            document.getElementById('tab-' + tab).classList.add('active');
+            if(tab === 'orders') loadOrders();
+            if(tab === 'games') loadGameEditor();
+            if(tab === 'minigame') loadMiniGameList();
+            if(tab === 'payments') loadPaymentEditor();
+            if(tab === 'coupons') loadCouponEditor();
+        }
+
+        async function loadAllData(){
+            try {
+                const doc = await db.collection('config').doc('settings').get();
+                if(doc.exists){
+                    const data = doc.data();
+                    if(data.gameData) gameData = data.gameData;
+                    if(data.payments) paymentMethods = data.payments;
+                    if(data.coupons) coupons = data.coupons;
+                } else {
+                    await db.collection('config').doc('settings').set({
+                        gameData: DEFAULT_GAME_DATA,
+                        payments: DEFAULT_PAYMENTS,
+                        coupons: DEFAULT_COUPONS
+                    });
+                }
+            } catch(e) {}
+            await loadOrders();
+            updateStats();
+        }
+
+        async function saveConfig(){
+            await db.collection('config').doc('settings').set({
+                gameData, payments: paymentMethods, coupons
+            }, {merge: true});
+        }
+
+        async function loadOrders(){
+            const c = document.getElementById('orderList');
+            try {
+                const snap = await db.collection('orders').orderBy('timestamp','desc').limit(100).get();
+                if(snap.empty){ c.innerHTML = '<div style="text-align:center;padding:30px;">📭 Kosong</div>'; return; }
+                c.innerHTML = '';
+                snap.forEach(doc => {
+                    const o = doc.data();
+                    c.innerHTML += `<div class="table-row grid-orders">
+                        <span style="color:#ffd93d;font-size:0.72em;">${(o.orderId||'').substring(0,12)}</span>
+                        <span><strong>${o.game||'-'}</strong><br><small>${o.userId||'-'}</small></span>
+                        <span>${o.tokens} ${o.unit||''}</span>
+                        <span style="color:#ffd93d;">Rp ${(o.price||0).toLocaleString('id-ID')}</span>
+                        <span><select class="editable-input" onchange="updateStatus('${doc.id}',this.value)" style="width:auto;">
+                            <option value="pending" ${o.status==='pending'?'selected':''}>Pending</option>
+                            <option value="proses" ${o.status==='proses'?'selected':''}>Proses</option>
+                            <option value="selesai" ${o.status==='selesai'?'selected':''}>Selesai</option>
+                        </select></span>
+                        <span><button class="btn-sm btn-del" onclick="delOrder('${doc.id}')">🗑️</button></span>
+                    </div>`;
+                });
+            } catch(e) { c.innerHTML = '<div style="text-align:center;padding:30px;">Gagal</div>'; }
+            updateStats();
+        }
+
+        async function updateStatus(id, status){ await db.collection('orders').doc(id).update({status}); toast('✅ Status diupdate!'); loadOrders(); }
+        async function delOrder(id){ if(!confirm('Yakin hapus?'))return; await db.collection('orders').doc(id).delete(); toast('🗑️ Dihapus'); loadOrders(); }
+
+        async function updateStats(){
+            try {
+                const snap = await db.collection('orders').get();
+                let t=0, r=0, p=0, d=0;
+                snap.forEach(doc => {
+                    const o = doc.data();
+                    t++; r += o.price||0;
+                    if(o.status==='pending') p++;
+                    if(o.status==='selesai') d++;
+                });
+                document.getElementById('statTotal').textContent = t;
+                document.getElementById('statRevenue').textContent = 'Rp ' + r.toLocaleString('id-ID');
+                document.getElementById('statPending').textContent = p;
+                document.getElementById('statDone').textContent = d;
+            } catch(e) {}
+        }
+
+        function loadGameEditor(){
+            let html = '';
+            Object.entries(gameData).forEach(([key, game]) => {
+                html += `<div style="padding:8px 14px;background:rgba(255,107,107,0.1);font-weight:700;display:flex;justify-content:space-between;">${game.icon} ${game.name} (${game.unit}) <button class="btn-sm btn-del" onclick="delGame('${key}')" style="font-size:0.65em;">🗑️ Hapus Game</button></div>`;
+                game.packages.forEach((pkg, idx) => {
+                    html += `<div class="table-row grid-games">
+                        <span>${game.name}</span><span>${pkg.best?'⭐ BEST':''}</span>
+                        <span><input class="editable-input" value="${pkg.amount}" id="a_${key}_${idx}"></span>
+                        <span><input class="editable-input" value="${pkg.price}" id="p_${key}_${idx}" type="number"></span>
+                        <span><input class="editable-input" value="${pkg.bonus||0}" id="b_${key}_${idx}" type="number"></span>
+                        <span><button class="btn-sm btn-save" onclick="saveGameItem('${key}',${idx})">💾</button><button class="btn-sm btn-del" onclick="delGameItem('${key}',${idx})">🗑️</button></span>
+                    </div>`;
+                });
+            });
+            document.getElementById('gameEditList').innerHTML = html || '<div style="text-align:center;padding:30px;">Kosong</div>';
+        }
+
+        async function saveGameItem(key, idx){
+            gameData[key].packages[idx] = {
+                ...gameData[key].packages[idx],
+                amount: document.getElementById(`a_${key}_${idx}`).value,
+                price: parseInt(document.getElementById(`p_${key}_${idx}`).value) || 0,
+                bonus: parseInt(document.getElementById(`b_${key}_${idx}`).value) || 0
+            };
+            await saveConfig(); toast('✅ Tersimpan!');
+        }
+        async function delGameItem(key, idx){ gameData[key].packages.splice(idx,1); await saveConfig(); toast('🗑️ Dihapus'); loadGameEditor(); }
+        async function addGameItem(){
+            const key = prompt('Key game:'); if(!key || !gameData[key]) return;
+            const amount = prompt('Jumlah:'); const price = parseInt(prompt('Harga:')); const bonus = parseInt(prompt('Bonus:')||'0');
+            if(!amount || !price) return;
+            gameData[key].packages.push({amount, price, bonus}); await saveConfig(); toast('✅ Ditambahkan!'); loadGameEditor();
+        }
+        async function addNewGame(){
+            const key = prompt('Key game:')?.toLowerCase().replace(/\s/g,''); if(!key || gameData[key]) return toast('Key sudah ada!','err');
+            const name = prompt('Nama:'); if(!name) return;
+            const icon = prompt('Icon:')||'🎮'; const unit = prompt('Unit:')||'Item';
+            gameData[key] = {name, icon, serverOptions:[], unit, packages:[{amount:'100', price:15000}]};
+            await saveConfig(); toast('✅ Game baru!'); loadGameEditor();
+        }
+        async function delGame(key){ if(!confirm('Hapus game?'))return; delete gameData[key]; await saveConfig(); toast('🗑️ Game dihapus'); loadGameEditor(); }
+
+        // ========== MINI GAME ==========
+        async function addMiniGame(){
+            const key = document.getElementById('miniKey').value.trim().toLowerCase().replace(/\s/g,'');
+            const name = document.getElementById('miniName').value.trim();
+            const coverUrl = document.getElementById('miniCoverUrl').value.trim();
+            const file = document.getElementById('miniFile').files[0];
+
+            if(!key || !name) return toast('Key dan Nama wajib diisi', 'err');
+            if(!file) return toast('Pilih file HTML', 'err');
+
+            try {
+                const ref = storage.ref('minigames/' + key + '.html');
+                await ref.put(file);
+                const gameUrl = await ref.getDownloadURL();
+
+                await db.collection('config').doc('settings').set({
+                    minigames: {
+                        [key]: { name, icon: '🕹️', coverUrl, gameUrl }
+                    }
+                }, {merge: true});
+
+                toast('✅ Mini Game ditambahkan!');
+                document.getElementById('miniKey').value = '';
+                document.getElementById('miniName').value = '';
+                document.getElementById('miniCoverUrl').value = '';
+                document.getElementById('miniFile').value = '';
+                loadMiniGameList();
+            } catch(e) {
+                toast('Gagal upload: ' + e.message, 'err');
+            }
+        }
+
+        async function loadMiniGameList(){
+            const container = document.getElementById('minigameList');
+            try {
+                const doc = await db.collection('config').doc('settings').get();
+                if(!doc.exists){ container.innerHTML = '<div style="text-align:center;padding:30px;">📭 Kosong</div>'; return; }
+                const data = doc.data();
+                const minigames = data.minigames || {};
+                const keys = Object.keys(minigames);
+                if(!keys.length){ container.innerHTML = '<div style="text-align:center;padding:30px;">📭 Kosong</div>'; return; }
+                
+                container.innerHTML = keys.map(key => {
+                    const m = minigames[key];
+                    return `<div class="table-row grid-minigame">
+                        <span style="color:#ffd93d;">${key}</span>
+                        <span>${m.name}</span>
+                        <span><img src="${m.coverUrl}" style="width:40px;height:40px;object-fit:cover;border-radius:6px;" onerror="this.style.display='none'"></span>
+                        <span>
+                            <button class="btn-sm btn-save" onclick="window.open('${m.gameUrl}','_blank')">▶ Mainkan</button>
+                            <button class="btn-sm btn-del" onclick="delMiniGame('${key}')">🗑️</button>
+                        </span>
+                    </div>`;
+                }).join('');
+            } catch(e) { container.innerHTML = '<div style="text-align:center;padding:30px;">Gagal</div>'; }
+        }
+
+        async function delMiniGame(key){
+            if(!confirm('Hapus mini game ini?')) return;
+            try {
+                const doc = await db.collection('config').doc('settings').get();
+                const data = doc.data() || {};
+                const minigames = data.minigames || {};
+                delete minigames[key];
+                await db.collection('config').doc('settings').set({minigames}, {merge:true});
+                toast('🗑️ Dihapus');
+                loadMiniGameList();
+            } catch(e) { toast('Gagal menghapus', 'err'); }
+        }
+
+        function loadPaymentEditor(){
+            document.getElementById('paymentEditList').innerHTML = paymentMethods.map((p, idx) => 
+                `<div class="table-row grid-payments">
+                    <span><input class="editable-input" value="${p.method}" id="pm_${idx}"></span>
+                    <span><input class="editable-input" value="${p.number}" id="pn_${idx}"></span>
+                    <span><input class="editable-input" value="${p.name}" id="pna_${idx}"></span>
+                    <span><input class="editable-input" value="${p.icon}" id="pi_${idx}" style="width:50px;"></span>
+                    <span><button class="btn-sm btn-save" onclick="savePay(${idx})">💾</button><button class="btn-sm btn-del" onclick="delPay(${idx})">🗑️</button></span>
+                </div>`
+            ).join('');
+        }
+        async function savePay(idx){
+            paymentMethods[idx] = {
+                method: document.getElementById(`pm_${idx}`).value,
+                number: document.getElementById(`pn_${idx}`).value,
+                name: document.getElementById(`pna_${idx}`).value,
+                icon: document.getElementById(`pi_${idx}`).value
+            };
+            await saveConfig(); toast('✅ Tersimpan!');
+        }
+        async function delPay(idx){ paymentMethods.splice(idx,1); await saveConfig(); toast('🗑️ Dihapus'); loadPaymentEditor(); }
+        async function addPaymentMethod(){
+            const m = prompt('Metode:'); const n = prompt('Nomor:'); const na = prompt('Nama:'); const i = prompt('Icon:')||'💳';
+            if(!m||!n) return;
+            paymentMethods.push({method:m, number:n, name:na, icon:i});
+            await saveConfig(); toast('✅ Ditambahkan!'); loadPaymentEditor();
+        }
+
+        function loadCouponEditor(){
+            document.getElementById('couponEditList').innerHTML = Object.entries(coupons).map(([code, c]) => 
+                `<div class="table-row grid-coupons">
+                    <span style="color:#ffd93d;font-weight:700;">${code}</span>
+                    <span><input class="editable-input" value="${c.discount}" id="cd_${code}" type="number" step="0.01"></span>
+                    <span><input class="editable-input" value="${c.minPrice}" id="cmp_${code}" type="number"></span>
+                    <span><input class="editable-input" value="${c.maxDiscount}" id="cmd_${code}" type="number"></span>
+                    <span><input class="editable-input" value="${c.desc}" id="cdesc_${code}"></span>
+                    <span><button class="btn-sm btn-save" onclick="saveCoup('${code}')">💾</button><button class="btn-sm btn-del" onclick="delCoup('${code}')">🗑️</button></span>
+                </div>`
+            ).join('');
+        }
+        async function saveCoup(code){
+            coupons[code] = {
+                discount: parseFloat(document.getElementById(`cd_${code}`).value)||0,
+                minPrice: parseInt(document.getElementById(`cmp_${code}`).value)||0,
+                maxDiscount: parseInt(document.getElementById(`cmd_${code}`).value)||0,
+                desc: document.getElementById(`cdesc_${code}`).value,
+                once: true
+            };
+            await saveConfig(); toast('✅ Tersimpan!');
+        }
+        async function delCoup(code){ delete coupons[code]; await saveConfig(); toast('🗑️ Dihapus'); loadCouponEditor(); }
+        async function addCoupon(){
+            const code = prompt('Kode:')?.toUpperCase(); if(!code) return;
+            coupons[code] = {
+                discount: parseFloat(prompt('Diskon:')||'0.2'),
+                minPrice: parseInt(prompt('Min:')||'0'),
+                maxDiscount: parseInt(prompt('Max:')||'50000'),
+                desc: prompt('Deskripsi:')||'-',
+                once: true
+            };
+            await saveConfig(); toast('✅ Ditambahkan!'); loadCouponEditor();
+        }
+
+        function saveAdminPass(){ const p = document.getElementById('editAdminPass').value.trim(); if(!p)return; localStorage.setItem('yaddstore_admin_pass', p); toast('✅ Password diubah!'); document.getElementById('editAdminPass').value=''; }
+        function saveWa(){ localStorage.setItem('yaddstore_wa', document.getElementById('editWa').value.trim()); toast('✅ Disimpan!'); }
+
+        function toast(msg, type){
+            const t = document.getElementById('toast');
+            t.textContent = msg; t.className = 'toast';
+            if(type === 'err') t.classList.add('err');
+            t.style.display = 'block';
+            clearTimeout(t._timeout);
+            t._timeout = setTimeout(() => t.style.display = 'none', 2500);
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            if(localStorage.getItem('admin_logged') === 'true'){
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('dashboard').classList.add('show');
+                loadAllData();
+            }
+        });
+    </script>
+</body>
+</html>
