@@ -136,9 +136,10 @@
                 </div>
                 <div class="form-group">
                     <label>Cover</label>
+                    <input type="text" id="coverUrl" placeholder="https://... (opsional)">
                     <button type="button" class="btn-sm primary" onclick="searchCover()">🔍 Cari Cover Otomatis</button>
                     <div id="coverPreview" class="cover-preview" style="margin-top:10px;"></div>
-                    <small style="color:#aaa;">Klik gambar untuk memilih cover</small>
+                    <small style="color:#aaa;">Pilih dari hasil pencarian, atau isi manual URL</small>
                 </div>
                 <button class="btn-sm primary" onclick="addCategory()">➕ Tambah Game/Voucher</button>
 
@@ -155,9 +156,10 @@
                 <div class="form-group"><label>Upload File HTML</label><input type="file" id="miniFile" accept=".html"></div>
                 <div class="form-group">
                     <label>Cover</label>
+                    <input type="text" id="miniCoverUrl" placeholder="https://... (opsional)">
                     <button type="button" class="btn-sm primary" onclick="searchMiniCover()">🔍 Cari Cover Otomatis</button>
                     <div id="miniCoverPreview" class="cover-preview" style="margin-top:10px;"></div>
-                    <small style="color:#aaa;">Klik gambar untuk memilih cover</small>
+                    <small style="color:#aaa;">Pilih dari hasil pencarian, atau isi manual URL</small>
                 </div>
                 <button class="btn-sm primary" onclick="addMiniGame()">➕ Tambah Mini Game</button>
 
@@ -231,6 +233,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
+    // Firebase config
     const firebaseConfig = {
         apiKey: "AIzaSyBMwguFp5Az8Q4KPVkq6etrhrEY_fHrlgo",
         authDomain: "yaddstore.firebaseapp.com",
@@ -243,8 +246,9 @@
     const db = firebase.firestore();
     const storage = firebase.storage();
 
+    // Google Search API
     const GOOGLE_API_KEY = 'AIzaSyC9vrCuvdmuBZjBXJAI2rMF_CCi1nTT3Ks';
-    const SEARCH_ENGINE_ID = '877f61e9779264adc';
+    const SEARCH_ENGINE_ID = '877f61e9779264adc'; // Ganti jika perlu
 
     let selectedCoverUrl = '';
     let selectedMiniCoverUrl = '';
@@ -416,6 +420,7 @@
                     container.querySelectorAll('img').forEach(i => i.classList.remove('selected-cover'));
                     img.classList.add('selected-cover');
                     selectedCoverUrl = item.link;
+                    document.getElementById('coverUrl').value = item.link; // isi otomatis
                 };
                 container.appendChild(img);
             });
@@ -443,6 +448,7 @@
                     container.querySelectorAll('img').forEach(i => i.classList.remove('selected-cover'));
                     img.classList.add('selected-cover');
                     selectedMiniCoverUrl = item.link;
+                    document.getElementById('miniCoverUrl').value = item.link; // isi otomatis
                 };
                 container.appendChild(img);
             });
@@ -461,29 +467,35 @@
         const unit = document.getElementById('catUnit').value.trim();
         const icon = document.getElementById('catIcon').value.trim() || '📦';
         const servers = document.getElementById('catServers').value.trim();
-        if (!key || !name || !unit) return toast('Key, Nama, Unit wajib', 'err');
+        // Gunakan URL dari input manual, atau dari hasil pencarian jika tidak diisi manual
+        let coverUrl = document.getElementById('coverUrl').value.trim();
+        if (!coverUrl && selectedCoverUrl) coverUrl = selectedCoverUrl;
+
+        if (!key || !name || !unit) return toast('Key, Nama, Unit wajib diisi', 'err');
         if (configData.categories[key]) return toast('Key sudah ada', 'err');
-        if (!selectedCoverUrl) return toast('Pilih cover dulu', 'err');
+
         configData.categories[key] = {
             name, type, icon, unit,
             serverOptions: type === 'game' ? servers.split(',').map(s => ({value:s.trim(),text:s.trim()})) : [],
             packages: [],
             gameUrl: '',
-            coverUrl: selectedCoverUrl
+            coverUrl
         };
         await saveConfig();
         renderGameVoucherList();
-        toast('✅ Ditambahkan');
+        toast('✅ Game/Voucher ditambahkan');
+        // Reset form
         document.getElementById('catKey').value = '';
         document.getElementById('catName').value = '';
         document.getElementById('catUnit').value = '';
         document.getElementById('catServers').value = '';
+        document.getElementById('coverUrl').value = '';
         document.getElementById('coverPreview').innerHTML = '';
         selectedCoverUrl = '';
     }
 
     async function deleteCategory(key) {
-        if (!confirm('Hapus?')) return;
+        if (!confirm('Hapus kategori ini?')) return;
         delete configData.categories[key];
         await saveConfig();
         renderGameVoucherList();
@@ -494,7 +506,7 @@
         const amt = document.getElementById(`pkgAmt_${key}`).value.trim();
         const price = parseInt(document.getElementById(`pkgPrice_${key}`).value.trim());
         const best = document.getElementById(`pkgBest_${key}`).checked;
-        if (!amt || !price) return toast('Lengkapi', 'err');
+        if (!amt || !price) return toast('Lengkapi jumlah dan harga', 'err');
         configData.categories[key].packages.push({amount:amt, price, best});
         await saveConfig();
         renderGameVoucherList();
@@ -548,18 +560,22 @@
         const name = document.getElementById('miniName').value.trim();
         const icon = document.getElementById('miniIcon').value.trim() || '🕹️';
         const fileInput = document.getElementById('miniFile');
-        if (!key || !name) return toast('Key dan Nama wajib', 'err');
+        let coverUrl = document.getElementById('miniCoverUrl').value.trim();
+        if (!coverUrl && selectedMiniCoverUrl) coverUrl = selectedMiniCoverUrl;
+
+        if (!key || !name) return toast('Key dan Nama wajib diisi', 'err');
         if (configData.categories[key]) return toast('Key sudah ada', 'err');
         if (!fileInput.files[0]) return toast('Upload file HTML', 'err');
-        if (!selectedMiniCoverUrl) return toast('Pilih cover dulu', 'err');
+
         const file = fileInput.files[0];
         const ref = storage.ref('minigames/' + key + '.html');
         await ref.put(file);
         const gameUrl = await ref.getDownloadURL();
+
         configData.categories[key] = {
             name, type: 'minigame', icon, unit: '',
             serverOptions: [], packages: [],
-            gameUrl, coverUrl: selectedMiniCoverUrl
+            gameUrl, coverUrl
         };
         await saveConfig();
         renderMiniGameList();
@@ -567,13 +583,14 @@
         document.getElementById('miniKey').value = '';
         document.getElementById('miniName').value = '';
         document.getElementById('miniIcon').value = '';
-        document.getElementById('miniFile').value = '';
+        document.getElementById('miniCoverUrl').value = '';
         document.getElementById('miniCoverPreview').innerHTML = '';
+        document.getElementById('miniFile').value = '';
         selectedMiniCoverUrl = '';
     }
 
     async function deleteMiniGame(key) {
-        if (!confirm('Hapus?')) return;
+        if (!confirm('Hapus mini game ini?')) return;
         delete configData.categories[key];
         await saveConfig();
         renderMiniGameList();
@@ -597,7 +614,7 @@
         container.innerHTML = html;
     }
 
-    // ==================== PAYMENTS, COUPONS, BANNERS, SETTINGS ====================
+    // ==================== PAYMENTS ====================
     async function addPayment() {
         const m = document.getElementById('payMethod').value.trim();
         const n = document.getElementById('payNumber').value.trim();
@@ -613,6 +630,7 @@
         c.innerHTML = (configData.payments||[]).map((p,i) => `<div style="display:flex;justify-content:space-between;">${p.icon} ${p.method} - ${p.number} <button class="btn-sm danger" onclick="deletePayment(${i})">🗑️</button></div>`).join('') || 'Belum ada';
     }
 
+    // ==================== COUPONS ====================
     async function addCoupon() {
         const c = document.getElementById('couponCode').value.trim().toUpperCase();
         const d = parseFloat(document.getElementById('couponDiscount').value);
@@ -627,6 +645,7 @@
         c.innerHTML = Object.keys(configData.coupons||{}).map(k => `<div style="display:flex;justify-content:space-between;">${k} - ${(configData.coupons[k].discount*100).toFixed(0)}% <button class="btn-sm danger" onclick="deleteCoupon('${k}')">🗑️</button></div>`).join('') || 'Belum ada';
     }
 
+    // ==================== BANNERS ====================
     async function addBanner() {
         const url = document.getElementById('bannerUrl').value.trim();
         if (!url) return toast('URL kosong', 'err');
@@ -641,6 +660,7 @@
         c.innerHTML = (configData.banners||[]).map((b,i) => `<div><img src="${b.url}" style="width:100px;height:60px;object-fit:cover;"> <button class="btn-sm danger" onclick="deleteBanner(${i})">🗑️</button></div>`).join('') || 'Belum ada';
     }
 
+    // ==================== SETTINGS ====================
     async function saveBgSettings() { configData.background = {color:document.getElementById('bgColor').value.trim(), image:configData.background?.image||''}; await saveConfig(); applyBg(); }
     function handleBgFile(input) {
         const f = input.files[0]; if(!f) return;
@@ -665,6 +685,7 @@
         await saveConfig(); loadAll(); toast('✅ Direset');
     }
 
+    // Tab navigation
     document.querySelectorAll('.tabs button').forEach(btn => {
         btn.addEventListener('click', function() {
             document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
@@ -676,6 +697,7 @@
         });
     });
 
+    // Chart init
     window.addEventListener('load', () => {
         const ctx = document.getElementById('revenueChart')?.getContext('2d');
         if (ctx) revenueChart = new Chart(ctx, { type:'bar', data:{labels:[], datasets:[{label:'Pendapatan', data:[], backgroundColor:'#ff6b6b'}]}, options:{scales:{y:{beginAtZero:true}}}});
